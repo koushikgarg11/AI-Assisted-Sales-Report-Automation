@@ -1,27 +1,26 @@
 import streamlit as st
-from openai import OpenAI
+import google.generativeai as genai
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 def generate_ai_summary(df):
 
-    data_sample = df.head(20).to_string()
+    preview = df.head(20).to_string()
 
     prompt = f"""
-    Analyze this dataset sample and provide business insights.
+    Analyze this dataset and generate insights.
 
-    Dataset:
-    {data_sample}
+    Dataset sample:
+    {preview}
 
-    Give:
+    Provide:
     - Key trends
     - Interesting patterns
     - Business insights
     """
 
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[{"role":"user","content":prompt}]
-    )
+    response = model.generate_content(prompt)
 
-    return response.choices[0].message.content
+    return response.text
