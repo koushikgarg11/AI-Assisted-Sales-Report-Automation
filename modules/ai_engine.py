@@ -3,7 +3,7 @@ import google.generativeai as genai
 
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-1.5-flash-latest")
 
 def generate_ai_summary(df):
 
@@ -12,7 +12,7 @@ def generate_ai_summary(df):
     prompt = f"""
     Analyze this dataset and generate insights.
 
-    Dataset sample:
+    Dataset preview:
     {preview}
 
     Provide:
