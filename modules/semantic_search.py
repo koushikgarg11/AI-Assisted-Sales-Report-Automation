@@ -1,18 +1,22 @@
+import streamlit as st
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+@st.cache_resource
+def load_model():
+    return SentenceTransformer("all-MiniLM-L6-v2")
+
+model = load_model()
 
 def search_dataframe(df, query):
 
-    text_rows = df.astype(str).apply(" ".join, axis=1)
+    text_data = df.astype(str).agg(" ".join, axis=1)
 
-    embeddings = model.encode(text_rows.tolist())
-
+    embeddings = model.encode(text_data.tolist())
     query_embedding = model.encode([query])
 
     similarity = cosine_similarity(query_embedding, embeddings)[0]
 
-    top_idx = similarity.argsort()[-5:][::-1]
+    top_indices = similarity.argsort()[-5:][::-1]
 
-    return df.iloc[top_idx]
+    return df.iloc[top_indices]
