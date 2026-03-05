@@ -1,7 +1,11 @@
 import streamlit as st
-from openai import OpenAI
+import google.generativeai as genai
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# Configure Gemini API
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+
+# Load model
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 def generate_report(df):
 
@@ -13,15 +17,14 @@ def generate_report(df):
     Dataset preview:
     {data_sample}
 
-    Include:
-    Executive Summary
-    Key Metrics
-    Business Recommendations
+    Include the following sections:
+
+    1. Executive Summary
+    2. Key Metrics
+    3. Trends and Patterns
+    4. Business Recommendations
     """
 
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[{"role":"user","content":prompt}]
-    )
+    response = model.generate_content(prompt)
 
-    return response.choices[0].message.content
+    return response.text
