@@ -6,7 +6,7 @@ import time
 @st.cache_resource
 def get_model(api_key: str):
     genai.configure(api_key=api_key)
-    return genai.GenerativeModel("gemini-1.5-flash-8b")  # highest free tier quota
+    return genai.GenerativeModel("gemini-2.5-flash")
 
 
 def generate_ai_summary(df, api_key: str):
@@ -21,10 +21,9 @@ Data:
 
 Give:
 - 3 key trends
-- 2 patterns  
+- 2 patterns
 - 3 business recommendations"""
 
-    # Retry up to 3 times with backoff
     for attempt in range(3):
         try:
             response = model.generate_content(prompt)
@@ -32,18 +31,13 @@ Give:
 
         except Exception as e:
             err = str(e)
-
             if "ResourceExhausted" in err or "429" in err:
                 if attempt < 2:
-                    wait = (attempt + 1) * 10  # 10s, then 20s
-                    time.sleep(wait)
+                    time.sleep((attempt + 1) * 10)
                     continue
-                return "⚠️ Quota exceeded. Try again in a minute or upgrade your Gemini plan at aistudio.google.com"
-
+                return "⚠️ Quota exceeded. Wait a minute or get a new key at aistudio.google.com/apikey"
             if "API_KEY_INVALID" in err or "401" in err:
                 return "⚠️ Invalid API key. Re-enter your Gemini key in the sidebar."
-
             if "404" in err or "not found" in err.lower():
-                return "⚠️ Model not available. Check aistudio.google.com for available models."
-
+                return "⚠️ Model not available. The model name may have changed — check aistudio.google.com"
             return f"⚠️ Error: {err}"
