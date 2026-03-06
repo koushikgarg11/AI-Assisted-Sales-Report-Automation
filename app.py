@@ -10,14 +10,13 @@ from modules.report_generator import generate_report
 st.set_page_config(page_title="SalesLens AI", layout="wide")
 st.title("SalesLens AI — Smart Data Analyzer")
 
-# ── API KEY (sidebar) ─────────────────────────
+# ── SIDEBAR ───────────────────────────────────
 with st.sidebar:
-    st.markdown("### 🔑 API Key")
-    api_key = st.text_input("Gemini API Key", type="password", placeholder="Paste your Gemini API key")
-    if api_key:
-        st.success("✓ Key entered")
+    st.markdown("### 📋 Pipeline")
+    st.markdown("01 · Upload CSV\n\n02 · ETL clean\n\n03 · Visualize\n\n04 · AI Insights\n\n05 · Semantic Search\n\n06 · Report")
     st.markdown("---")
-    st.markdown("### 📋 Pipeline\n01 · Upload CSV\n02 · ETL clean\n03 · Visualize\n04 · AI Insights\n05 · Semantic Search\n06 · Report")
+    st.markdown("### ℹ️ About")
+    st.markdown("Upload any sales CSV and get AI-powered insights, semantic search, and a generated report — no API key needed.")
 
 # ── DATA UPLOAD ───────────────────────────────
 uploaded_file = st.file_uploader("Upload Dataset (.csv)", type=["csv"])
@@ -47,16 +46,13 @@ if uploaded_file:
     # ── AI INSIGHTS ───────────────────────────
     st.subheader("AI Dataset Insights")
     if st.button("✦ Generate AI Insights"):
-        if not api_key:
-            st.warning("Please enter your Gemini API key in the sidebar.")
-        else:
-            with st.spinner("Analyzing with Gemini..."):
-                insights = generate_ai_summary(df, api_key)
-            st.write(insights)
+        with st.spinner("Analyzing with Gemini..."):
+            insights = generate_ai_summary(df)
+        st.write(insights)
 
     # ── SEMANTIC SEARCH ───────────────────────
     st.subheader("Semantic Search")
-    st.caption("Ask anything in plain English — e.g. *'highest revenue customers'* or *'refunded orders in Europe'*")
+    st.caption("Ask anything in plain English — e.g. 'highest revenue customers' or 'refunded orders in Europe'")
 
     col_q, col_k = st.columns([3, 1])
     query = col_q.text_input("Search your dataset", placeholder="e.g. top performing products last quarter")
@@ -67,12 +63,10 @@ if uploaded_file:
             output = search_dataframe(df, query, top_k=top_k, threshold=0.25)
 
         if output["no_results"]:
-            st.info("No results matched your query. Try rephrasing or lowering the similarity threshold.")
+            st.info("No results matched your query. Try rephrasing.")
         else:
             results = output["results"]
             st.success(f"Found {len(results)} result(s)")
-            # Show similarity score column highlighted
-            # Sort by score and display cleanly
             results["_similarity_score"] = results["_similarity_score"].apply(lambda x: f"{x:.0%}")
             results = results.rename(columns={"_similarity_score": "Match %"})
             st.dataframe(results, use_container_width=True)
@@ -80,14 +74,14 @@ if uploaded_file:
     # ── REPORT ────────────────────────────────
     st.subheader("Generate AI Report")
     if st.button("📋 Create Report"):
-        if not api_key:
-            st.warning("Please enter your Gemini API key in the sidebar.")
-        else:
-            with st.spinner("Generating report..."):
-                report = generate_report(df, api_key)
-            st.download_button(
-                "⬇ Download Report",
-                report,
-                file_name="saleslens_report.txt",
-                mime="text/plain"
-            )
+        with st.spinner("Generating report..."):
+            report = generate_report(df)
+        st.download_button(
+            "⬇ Download Report",
+            report,
+            file_name="saleslens_report.txt",
+            mime="text/plain"
+        )
+
+else:
+    st.info("⬆ Upload a CSV file to get started.")
