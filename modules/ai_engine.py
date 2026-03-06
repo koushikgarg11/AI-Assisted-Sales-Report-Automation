@@ -1,44 +1,49 @@
 import google.generativeai as genai
 import streamlit as st
+import time
 
 
 @st.cache_resource
 def get_model(api_key: str):
     genai.configure(api_key=api_key)
-    return genai.GenerativeModel("gemini-2.0-flash-lite")  # lighter = less quota
+    return genai.GenerativeModel("gemini-1.5-flash-8b")  # highest free tier quota
 
 
 def generate_ai_summary(df, api_key: str):
-    try:
-        model = get_model(api_key)
+    model = get_model(api_key)
 
-        # Limit to 10 rows + basic stats to reduce token usage
-        preview = df.head(10).to_string()
-        stats = df.describe(include="all").to_string()
+    preview = df.head(10).to_string()
 
-        prompt = f"""Analyze this dataset briefly. Be concise.
+    prompt = f"""Analyze this sales dataset. Be concise, max 200 words.
 
-Dataset preview (10 rows):
+Data:
 {preview}
 
-Basic stats:
-{stats}
-
-Provide:
+Give:
 - 3 key trends
-- 2 notable patterns
-- 3 business insights
-Keep response under 300 words."""
+- 2 patterns  
+- 3 business recommendations"""
 
-        response = model.generate_content(prompt)
-        return response.text
+    # Retry up to 3 times with backoff
+    for attempt in range(3):
+        try:
+            response = model.generate_content(prompt)
+            return response.text
 
-    except Exception as e:
-        err = str(e)
-        if "ResourceExhausted" in err or "429" in err:
-            return "⚠️ Gemini API quota exceeded. Wait a few minutes or get a new key at aistudio.google.com/apikey"
-        if "API_KEY_INVALID" in err or "401" in err:
-            return "⚠️ Invalid API key. Please check and re-enter your Gemini API key."
-        if "404" in err or "not found" in err.lower():
-            return "⚠️ Model not found. Try updating the model name in ai_engine.py."
-        return f"⚠️ Unexpected error: {err}"
+        except Exception as e:
+            err = str(e)
+
+            if "ResourceExhausted" in err or "429" in err:
+                if attempt < 2:
+                    wait = (attempt + 1) * 10  # 10s, then 20s
+                    time.sleep(wait)
+                    continue
+                return "⚠️ Quota exceeded. Try again in a minute or upgrade your Gemini plan at aistudio.google.com"
+
+            if "API_KEY_INVALID" in err or "401" in err:
+                return "⚠️ Invalid API key. Re-enter your Gemini key in the sidebar."
+
+            if "404" in err or "not found" in err.lower():
+                return "⚠️ Model not available. Check aistudio.google.com for available models."
+
+            return f"⚠️ Error: {err}"
