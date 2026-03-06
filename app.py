@@ -72,10 +72,10 @@ if uploaded_file:
             results = output["results"]
             st.success(f"Found {len(results)} result(s)")
             # Show similarity score column highlighted
-            st.dataframe(
-                results.style.background_gradient(subset=["_similarity_score"], cmap="YlGn"),
-                use_container_width=True
-            )
+            # Sort by score and display cleanly
+            results["_similarity_score"] = results["_similarity_score"].apply(lambda x: f"{x:.0%}")
+            results = results.rename(columns={"_similarity_score": "Match %"})
+            st.dataframe(results, use_container_width=True)
 
     # ── REPORT ────────────────────────────────
     st.subheader("Generate AI Report")
