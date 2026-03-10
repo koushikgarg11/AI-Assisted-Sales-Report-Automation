@@ -18,20 +18,31 @@ st.set_page_config(
 
 st.title("📊 AI Sales Intelligence Platform")
 
-st.write("Upload your sales dataset to generate KPIs, charts, insights, and an AI-powered report.")
+st.write(
+    "Upload your sales dataset to generate KPIs, charts, insights, and an AI-powered report."
+)
 
 uploaded_file = st.file_uploader(
     "Upload Sales Dataset",
     type=["csv", "xlsx"]
 )
 
+# =========================
+# DATA LOADING
+# =========================
+
 if uploaded_file:
 
-    # Load Data
     df = load_data(uploaded_file)
+
+    if df is None:
+        st.stop()
 
     st.subheader("📂 Dataset Preview")
     st.dataframe(df.head())
+
+    # Helpful for debugging datasets
+    st.write("Dataset Columns:", list(df.columns))
 
     # =========================
     # KPI DASHBOARD
@@ -61,21 +72,21 @@ if uploaded_file:
 
     st.subheader("📈 Visualizations")
 
-    try:
-        st.plotly_chart(sales_by_region(df), use_container_width=True)
-    except:
+    region_chart = sales_by_region(df)
+    if region_chart:
+        st.plotly_chart(region_chart, use_container_width=True)
+    else:
         st.warning("Region column not found for visualization.")
 
-    try:
-        st.plotly_chart(sales_by_category(df), use_container_width=True)
-    except:
+    category_chart = sales_by_category(df)
+    if category_chart:
+        st.plotly_chart(category_chart, use_container_width=True)
+    else:
         st.warning("Category column not found for visualization.")
 
-    if "Order Date" in df.columns:
-        try:
-            st.plotly_chart(sales_trend(df), use_container_width=True)
-        except:
-            st.warning("Could not generate sales trend chart.")
+    trend_chart = sales_trend(df)
+    if trend_chart:
+        st.plotly_chart(trend_chart, use_container_width=True)
 
     # =========================
     # BUSINESS INSIGHTS
@@ -100,7 +111,6 @@ if uploaded_file:
     if st.button("Generate AI Report"):
 
         with st.spinner("Generating AI report..."):
-
             report = generate_report(df)
 
         st.markdown(report)
@@ -109,10 +119,9 @@ if uploaded_file:
         # PDF DOWNLOAD
         # =========================
 
-        file = generate_pdf(report)
+        pdf_file = generate_pdf(report)
 
-        with open(file, "rb") as f:
-
+        with open(pdf_file, "rb") as f:
             st.download_button(
                 label="📄 Download PDF Report",
                 data=f,
