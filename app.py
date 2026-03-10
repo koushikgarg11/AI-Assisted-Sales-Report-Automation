@@ -1,14 +1,11 @@
 import streamlit as st
+import pandas as pd
+import plotly.express as px
 
 from modules.data_loader import load_data
 from modules.kpi_engine import generate_kpis
-from modules.visualization_engine import (
-    sales_by_region,
-    sales_by_category,
-    sales_trend
-)
 from modules.insight_engine import generate_insights
-from modules.report_generator import generate_report, generate_pdf
+from modules.report_generator import generate_pdf
 
 
 st.set_page_config(
@@ -19,11 +16,11 @@ st.set_page_config(
 st.title("📊 AI Sales Intelligence Platform")
 
 st.write(
-    "Upload your sales dataset to generate KPIs, charts, insights, and an AI-powered report."
+    "Upload any dataset to generate KPIs, charts, insights, chat with data, and download a report."
 )
 
 uploaded_file = st.file_uploader(
-    "Upload Sales Dataset",
+    "Upload Dataset",
     type=["csv", "xlsx"]
 )
 
@@ -41,7 +38,6 @@ if uploaded_file:
     st.subheader("📂 Dataset Preview")
     st.dataframe(df.head())
 
-    # Helpful for debugging datasets
     st.write("Dataset Columns:", list(df.columns))
 
     # =========================
@@ -54,11 +50,11 @@ if uploaded_file:
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("Total Revenue", f"${kpis.get('Total Revenue',0):,.0f}")
-    col2.metric("Total Orders", kpis.get("Total Orders",0))
+    col1.metric("Total Revenue", f"{kpis.get('Total Revenue',0):,.2f}")
+    col2.metric("Total Rows", kpis.get("Total Orders",0))
     col3.metric(
-        "Average Order Value",
-        f"${kpis.get('Average Order Value',0):,.2f}"
+        "Average Value",
+        f"{kpis.get('Average Order Value',0):,.2f}"
     )
 
     col4, col5 = st.columns(2)
@@ -67,65 +63,63 @@ if uploaded_file:
     col5.metric("Top Region", kpis.get("Top Region","N/A"))
 
     # =========================
-    # VISUALIZATIONS
+    # CUSTOM VISUALIZATION BUILDER
     # =========================
 
     st.subheader("📊 Custom Visualization Builder")
 
-columns = df.columns.tolist()
+    columns = df.columns.tolist()
 
-col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-x_axis = col1.selectbox("Select X-axis", columns)
-y_axis = col2.selectbox("Select Y-axis", columns)
+    x_axis = col1.selectbox("Select X-axis", columns)
+    y_axis = col2.selectbox("Select Y-axis", columns)
 
-chart_type = col3.selectbox(
-    "Select Chart Type",
-    ["Bar Chart", "Line Chart", "Scatter Plot"]
-)
+    chart_type = col3.selectbox(
+        "Select Chart Type",
+        ["Bar Chart", "Line Chart", "Scatter Plot"]
+    )
 
-import plotly.express as px
+    try:
 
-try:
+        if chart_type == "Bar Chart":
 
-    if chart_type == "Bar Chart":
+            chart = px.bar(
+                df,
+                x=x_axis,
+                y=y_axis,
+                title=f"{y_axis} by {x_axis}"
+            )
 
-        chart = px.bar(
-            df,
-            x=x_axis,
-            y=y_axis,
-            title=f"{y_axis} by {x_axis}"
-        )
+        elif chart_type == "Line Chart":
 
-    elif chart_type == "Line Chart":
+            chart = px.line(
+                df,
+                x=x_axis,
+                y=y_axis,
+                title=f"{y_axis} trend"
+            )
 
-        chart = px.line(
-            df,
-            x=x_axis,
-            y=y_axis,
-            title=f"{y_axis} trend"
-        )
+        else:
 
-    else:
+            chart = px.scatter(
+                df,
+                x=x_axis,
+                y=y_axis,
+                title=f"{x_axis} vs {y_axis}"
+            )
 
-        chart = px.scatter(
-            df,
-            x=x_axis,
-            y=y_axis,
-            title=f"{x_axis} vs {y_axis}"
-        )
+        st.plotly_chart(chart, use_container_width=True)
 
-    st.plotly_chart(chart, use_container_width=True)
+    except:
 
-except Exception as e:
-
-    st.warning("Unable to create visualization with selected columns.")
+        st.warning("Unable to create visualization with selected columns.")
 
     # =========================
     # BUSINESS INSIGHTS
     # =========================
 
-    st.subheader("🧠 AI Business Insights")
+    st.subheader("🧠 Data Insights")
 
     insights = generate_insights(df)
 
@@ -133,31 +127,90 @@ except Exception as e:
         for i in insights:
             st.write("•", i)
     else:
-        st.info("No insights could be generated from this dataset.")
+        st.info("No insights generated.")
 
     # =========================
-    # AI REPORT GENERATION
+    # CHAT WITH DATA
     # =========================
 
-    st.subheader("🤖 AI Sales Analysis Report")
+    st.subheader("💬 Chat With Your Data")
 
-    if st.button("Generate AI Report"):
+    question = st.text_input("Ask a question about your dataset")
 
-        with st.spinner("Generating AI report..."):
-            report = generate_report(df)
+    if question:
+
+        try:
+
+            numeric_cols = df.select_dtypes(include="number").columns
+            cat_cols = df.select_dtypes(include="object").columns
+
+            if "total" in question.lower():
+
+                col = numeric_cols[0]
+                answer = df[col].sum()
+
+                st.write(f"Total {col}: {answer:,.2f}")
+
+            elif "average" in question.lower():
+
+                col = numeric_cols[0]
+                answer = df[col].mean()
+
+                st.write(f"Average {col}: {answer:,.2f}")
+
+            elif "highest" in question.lower():
+
+                num = numeric_cols[0]
+                cat = cat_cols[0]
+
+                result = df.groupby(cat)[num].sum().idxmax()
+
+                st.write(f"{result} has the highest {num}")
+
+            else:
+
+                st.write("Try asking about total, average, or highest values.")
+
+        except:
+
+            st.write("Unable to analyze this question.")
+
+    # =========================
+    # REPORT GENERATION (NO API)
+    # =========================
+
+    st.subheader("📄 Generate Analysis Report")
+
+    if st.button("Generate Report"):
+
+        numeric_cols = df.select_dtypes(include="number").columns
+
+        report = "## Dataset Analysis Report\n\n"
+
+        report += f"Total Rows: {len(df)}\n\n"
+        report += f"Total Columns: {len(df.columns)}\n\n"
+
+        if len(numeric_cols) > 0:
+
+            col = numeric_cols[0]
+
+            report += f"Total {col}: {df[col].sum():,.2f}\n\n"
+            report += f"Average {col}: {df[col].mean():,.2f}\n\n"
+
+        report += "### Key Insights\n"
+
+        for i in insights:
+            report += f"- {i}\n"
 
         st.markdown(report)
-
-        # =========================
-        # PDF DOWNLOAD
-        # =========================
 
         pdf_file = generate_pdf(report)
 
         with open(pdf_file, "rb") as f:
+
             st.download_button(
                 label="📄 Download PDF Report",
                 data=f,
-                file_name="sales_report.pdf",
+                file_name="analysis_report.pdf",
                 mime="application/pdf"
             )
