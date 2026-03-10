@@ -1,87 +1,82 @@
 import streamlit as st
-from modules.data_loader import load_dataset
-from modules.etl_pipeline import clean_data
-from modules.auto_analysis import detect_columns
-from modules.charts_engine import generate_chart
-from modules.semantic_search import search_dataframe
-from modules.ai_engine import generate_ai_summary
-from modules.report_generator import generate_report
 
-st.set_page_config(page_title="SalesLens AI", layout="wide")
-st.title("SalesLens AI — Smart Data Analyzer")
+from modules.data_loader import load_data
+from modules.kpi_engine import generate_kpis
+from modules.visualization_engine import (
+    sales_by_region,
+    sales_by_category,
+    sales_trend
+)
+from modules.insight_engine import generate_insights
+from modules.report_generator import generate_pdf
 
-# ── SIDEBAR ───────────────────────────────────
-with st.sidebar:
-    st.markdown("### 📋 Pipeline")
-    st.markdown("01 · Upload CSV\n\n02 · ETL clean\n\n03 · Visualize\n\n04 · AI Insights\n\n05 · Semantic Search\n\n06 · Report")
-    st.markdown("---")
-    st.markdown("### ℹ️ About")
-    st.markdown("Upload any sales CSV and get AI-powered insights, semantic search, and a generated report — no API key needed.")
+st.set_page_config(page_title="AI Sales Intelligence Platform")
 
-# ── DATA UPLOAD ───────────────────────────────
-uploaded_file = st.file_uploader("Upload Dataset (.csv)", type=["csv"])
+st.title("📊 AI Sales Intelligence Platform")
+
+uploaded_file = st.file_uploader(
+    "Upload Sales Dataset",
+    type=["csv", "xlsx"]
+)
 
 if uploaded_file:
-    df = load_dataset(uploaded_file)
-    df = clean_data(df)
+
+    df = load_data(uploaded_file)
 
     st.subheader("Dataset Preview")
-    st.dataframe(df.head(), use_container_width=True)
 
-    numeric_cols, cat_cols = detect_columns(df)
-    col1, col2 = st.columns(2)
-    col1.write(f"**Numeric columns:** {', '.join(numeric_cols) if numeric_cols else '—'}")
-    col2.write(f"**Categorical columns:** {', '.join(cat_cols) if cat_cols else '—'}")
+    st.dataframe(df.head())
 
-    # ── CHARTS ───────────────────────────────
-    if numeric_cols and cat_cols:
-        st.subheader("Visualize Data")
-        c1, c2, c3 = st.columns(3)
-        x = c1.selectbox("Category (X)", cat_cols)
-        y = c2.selectbox("Metric (Y)", numeric_cols)
-        chart_type = c3.selectbox("Chart Type", ["bar", "line", "scatter", "box", "histogram", "pie"])
-        fig = generate_chart(df, x, y, chart_type)
-        st.plotly_chart(fig, use_container_width=True)
+    # KPI Dashboard
 
-    # ── AI INSIGHTS ───────────────────────────
-    st.subheader("AI Dataset Insights")
-    if st.button("✦ Generate AI Insights"):
-        with st.spinner("Analyzing with Gemini..."):
-            insights = generate_ai_summary(df)
-        st.write(insights)
+    kpis = generate_kpis(df)
 
-    # ── SEMANTIC SEARCH ───────────────────────
-    st.subheader("Semantic Search")
-    st.caption("Ask anything in plain English — e.g. 'highest revenue customers' or 'refunded orders in Europe'")
+    st.subheader("📊 KPI Dashboard")
 
-    col_q, col_k = st.columns([3, 1])
-    query = col_q.text_input("Search your dataset", placeholder="e.g. top performing products last quarter")
-    top_k = col_k.slider("Results", min_value=1, max_value=20, value=5)
+    col1, col2, col3 = st.columns(3)
 
-    if query:
-        with st.spinner("Searching..."):
-            output = search_dataframe(df, query, top_k=top_k, threshold=0.25)
+    col1.metric("Total Revenue", f"${kpis.get('Total Revenue',0):,.0f}")
+    col2.metric("Total Orders", kpis.get("Total Orders",0))
+    col3.metric(
+        "Average Order Value",
+        f"${kpis.get('Average Order Value',0):,.2f}"
+    )
 
-        if output["no_results"]:
-            st.info("No results matched your query. Try rephrasing.")
-        else:
-            results = output["results"]
-            st.success(f"Found {len(results)} result(s)")
-            results["_similarity_score"] = results["_similarity_score"].apply(lambda x: f"{x:.0%}")
-            results = results.rename(columns={"_similarity_score": "Match %"})
-            st.dataframe(results, use_container_width=True)
+    col4, col5 = st.columns(2)
 
-    # ── REPORT ────────────────────────────────
-    st.subheader("Generate AI Report")
-    if st.button("📋 Create Report"):
-        with st.spinner("Generating report..."):
-            report = generate_report(df)
-        st.download_button(
-            "⬇ Download Report",
-            report,
-            file_name="saleslens_report.txt",
-            mime="text/plain"
-        )
+    col4.metric("Top Category", kpis.get("Top Category","N/A"))
+    col5.metric("Top Region", kpis.get("Top Region","N/A"))
 
-else:
-    st.info("⬆ Upload a CSV file to get started.")
+    # Charts
+
+    st.subheader("📈 Visualizations")
+
+    st.plotly_chart(sales_by_region(df))
+    st.plotly_chart(sales_by_category(df))
+
+    if "Order Date" in df.columns:
+        st.plotly_chart(sales_trend(df))
+
+    # Insights
+
+    st.subheader("🧠 AI Business Insights")
+
+    insights = generate_insights(df)
+
+    for i in insights:
+        st.write("•", i)
+
+    # Report generation
+
+    if st.button("Generate PDF Report"):
+
+        file = generate_pdf(kpis, insights)
+
+        with open(file, "rb") as f:
+
+            st.download_button(
+                label="Download Sales Report",
+                data=f,
+                file_name="sales_report.pdf",
+                mime="application/pdf"
+            )
