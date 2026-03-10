@@ -1,37 +1,59 @@
+import pandas as pd
+
+
 def generate_insights(df):
 
     insights = []
 
-    if "Category" in df.columns and "Sales" in df.columns:
+    columns = [c.lower() for c in df.columns]
 
-        top_category = df.groupby("Category")["Sales"].sum().idxmax()
+    # Detect possible sales column
+    sales_col = None
+    for col in df.columns:
+        if col.lower() in ["sales", "revenue", "amount", "profit"]:
+            sales_col = col
 
-        insights.append(
-            f"{top_category} category generates the highest revenue."
+    # Detect region column
+    region_col = None
+    for col in df.columns:
+        if col.lower() in ["region", "location", "state"]:
+            region_col = col
+
+    # Detect category column
+    category_col = None
+    for col in df.columns:
+        if col.lower() in ["category", "product category", "product"]:
+            category_col = col
+
+    # Top Region
+    if sales_col and region_col:
+
+        top_region = (
+            df.groupby(region_col)[sales_col]
+            .sum()
+            .sort_values(ascending=False)
+            .index[0]
         )
 
-    if "Region" in df.columns and "Sales" in df.columns:
+        insights.append(f"{top_region} region generated the highest revenue.")
 
-        top_region = df.groupby("Region")["Sales"].sum().idxmax()
+    # Top Category
+    if sales_col and category_col:
 
-        insights.append(
-            f"{top_region} region contributes the highest sales."
+        top_category = (
+            df.groupby(category_col)[sales_col]
+            .sum()
+            .sort_values(ascending=False)
+            .index[0]
         )
 
-    if "Sales" in df.columns:
+        insights.append(f"{top_category} is the best performing product category.")
 
-        avg_sales = df["Sales"].mean()
+    # Total Sales Insight
+    if sales_col:
 
-        insights.append(
-            f"Average sales value per transaction is {round(avg_sales,2)}."
-        )
+        total_sales = df[sales_col].sum()
 
-    if "Sales" in df.columns:
-
-        max_sale = df["Sales"].max()
-
-        insights.append(
-            f"The highest recorded transaction is {max_sale}."
-        )
+        insights.append(f"Total sales across dataset is ${total_sales:,.0f}.")
 
     return insights
