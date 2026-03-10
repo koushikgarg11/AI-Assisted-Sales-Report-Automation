@@ -1,59 +1,27 @@
-import pandas as pd
-
-
 def generate_insights(df):
 
     insights = []
 
-    columns = [c.lower() for c in df.columns]
+    numeric_cols = df.select_dtypes(include="number").columns
+    cat_cols = df.select_dtypes(include="object").columns
 
-    # Detect possible sales column
-    sales_col = None
-    for col in df.columns:
-        if col.lower() in ["sales", "revenue", "amount", "profit"]:
-            sales_col = col
+    if len(numeric_cols) == 0:
+        return insights
 
-    # Detect region column
-    region_col = None
-    for col in df.columns:
-        if col.lower() in ["region", "location", "state"]:
-            region_col = col
+    metric = numeric_cols[0]
 
-    # Detect category column
-    category_col = None
-    for col in df.columns:
-        if col.lower() in ["category", "product category", "product"]:
-            category_col = col
+    total = df[metric].sum()
+    avg = df[metric].mean()
 
-    # Top Region
-    if sales_col and region_col:
+    insights.append(f"Total {metric} across dataset is {total:,.2f}.")
+    insights.append(f"Average {metric} per record is {avg:,.2f}.")
 
-        top_region = (
-            df.groupby(region_col)[sales_col]
-            .sum()
-            .sort_values(ascending=False)
-            .index[0]
+    if len(cat_cols) > 0:
+
+        top_cat = df.groupby(cat_cols[0])[metric].sum().idxmax()
+
+        insights.append(
+            f"{top_cat} contributes the highest {metric}."
         )
-
-        insights.append(f"{top_region} region generated the highest revenue.")
-
-    # Top Category
-    if sales_col and category_col:
-
-        top_category = (
-            df.groupby(category_col)[sales_col]
-            .sum()
-            .sort_values(ascending=False)
-            .index[0]
-        )
-
-        insights.append(f"{top_category} is the best performing product category.")
-
-    # Total Sales Insight
-    if sales_col:
-
-        total_sales = df[sales_col].sum()
-
-        insights.append(f"Total sales across dataset is ${total_sales:,.0f}.")
 
     return insights
