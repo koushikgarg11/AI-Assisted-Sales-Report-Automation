@@ -8,11 +8,17 @@ from modules.visualization_engine import (
     sales_trend
 )
 from modules.insight_engine import generate_insights
-from modules.report_generator import generate_pdf
+from modules.report_generator import generate_report, generate_pdf
 
-st.set_page_config(page_title="AI Sales Intelligence Platform")
+
+st.set_page_config(
+    page_title="AI Sales Intelligence Platform",
+    layout="wide"
+)
 
 st.title("📊 AI Sales Intelligence Platform")
+
+st.write("Upload your sales dataset to generate KPIs, charts, insights, and an AI-powered report.")
 
 uploaded_file = st.file_uploader(
     "Upload Sales Dataset",
@@ -21,13 +27,15 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file:
 
+    # Load Data
     df = load_data(uploaded_file)
 
-    st.subheader("Dataset Preview")
-
+    st.subheader("📂 Dataset Preview")
     st.dataframe(df.head())
 
-    # KPI Dashboard
+    # =========================
+    # KPI DASHBOARD
+    # =========================
 
     kpis = generate_kpis(df)
 
@@ -47,35 +55,66 @@ if uploaded_file:
     col4.metric("Top Category", kpis.get("Top Category","N/A"))
     col5.metric("Top Region", kpis.get("Top Region","N/A"))
 
-    # Charts
+    # =========================
+    # VISUALIZATIONS
+    # =========================
 
     st.subheader("📈 Visualizations")
 
-    st.plotly_chart(sales_by_region(df))
-    st.plotly_chart(sales_by_category(df))
+    try:
+        st.plotly_chart(sales_by_region(df), use_container_width=True)
+    except:
+        st.warning("Region column not found for visualization.")
+
+    try:
+        st.plotly_chart(sales_by_category(df), use_container_width=True)
+    except:
+        st.warning("Category column not found for visualization.")
 
     if "Order Date" in df.columns:
-        st.plotly_chart(sales_trend(df))
+        try:
+            st.plotly_chart(sales_trend(df), use_container_width=True)
+        except:
+            st.warning("Could not generate sales trend chart.")
 
-    # Insights
+    # =========================
+    # BUSINESS INSIGHTS
+    # =========================
 
     st.subheader("🧠 AI Business Insights")
 
     insights = generate_insights(df)
 
-    for i in insights:
-        st.write("•", i)
+    if insights:
+        for i in insights:
+            st.write("•", i)
+    else:
+        st.info("No insights could be generated from this dataset.")
 
-    # Report generation
+    # =========================
+    # AI REPORT GENERATION
+    # =========================
 
-    if st.button("Generate PDF Report"):
+    st.subheader("🤖 AI Sales Analysis Report")
 
-        file = generate_pdf(kpis, insights)
+    if st.button("Generate AI Report"):
+
+        with st.spinner("Generating AI report..."):
+
+            report = generate_report(df)
+
+        st.markdown(report)
+
+        # =========================
+        # PDF DOWNLOAD
+        # =========================
+
+        file = generate_pdf(report)
 
         with open(file, "rb") as f:
 
             st.download_button(
-                label="Download Sales Report",
+                label="📄 Download PDF Report",
                 data=f,
                 file_name="sales_report.pdf",
                 mime="application/pdf"
