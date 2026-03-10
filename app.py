@@ -70,23 +70,56 @@ if uploaded_file:
     # VISUALIZATIONS
     # =========================
 
-    st.subheader("📈 Visualizations")
+    st.subheader("📊 Custom Visualization Builder")
 
-    region_chart = sales_by_region(df)
-    if region_chart:
-        st.plotly_chart(region_chart, use_container_width=True)
+columns = df.columns.tolist()
+
+col1, col2, col3 = st.columns(3)
+
+x_axis = col1.selectbox("Select X-axis", columns)
+y_axis = col2.selectbox("Select Y-axis", columns)
+
+chart_type = col3.selectbox(
+    "Select Chart Type",
+    ["Bar Chart", "Line Chart", "Scatter Plot"]
+)
+
+import plotly.express as px
+
+try:
+
+    if chart_type == "Bar Chart":
+
+        chart = px.bar(
+            df,
+            x=x_axis,
+            y=y_axis,
+            title=f"{y_axis} by {x_axis}"
+        )
+
+    elif chart_type == "Line Chart":
+
+        chart = px.line(
+            df,
+            x=x_axis,
+            y=y_axis,
+            title=f"{y_axis} trend"
+        )
+
     else:
-        st.warning("Region column not found for visualization.")
 
-    category_chart = sales_by_category(df)
-    if category_chart:
-        st.plotly_chart(category_chart, use_container_width=True)
-    else:
-        st.warning("Category column not found for visualization.")
+        chart = px.scatter(
+            df,
+            x=x_axis,
+            y=y_axis,
+            title=f"{x_axis} vs {y_axis}"
+        )
 
-    trend_chart = sales_trend(df)
-    if trend_chart:
-        st.plotly_chart(trend_chart, use_container_width=True)
+    st.plotly_chart(chart, use_container_width=True)
+
+except Exception as e:
+
+    st.warning("Unable to create visualization with selected columns.")
 
     # =========================
     # BUSINESS INSIGHTS
