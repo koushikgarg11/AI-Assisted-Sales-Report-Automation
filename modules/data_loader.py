@@ -1,12 +1,12 @@
 import pandas as pd
 
-def load_dataset(file):
+def load_data(uploaded_file):
 
-    if file.name.endswith(".csv"):
-        df = pd.read_csv(file)
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
 
-    elif file.name.endswith(".xlsx"):
-        df = pd.read_excel(file)
+    elif uploaded_file.name.endswith(".xlsx"):
+        df = pd.read_excel(uploaded_file)
 
     else:
         raise ValueError("Unsupported file format")
